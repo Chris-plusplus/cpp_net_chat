@@ -1,0 +1,3 @@
+[submodule "deps/archimedes"]
+	path = deps/archimedes
+	url = https://github.com/AGH-Code-Industry/archimedes
