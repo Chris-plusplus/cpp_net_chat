@@ -1,0 +1,5 @@
+include_guard()
+
+find_package(Curses REQUIRED)
+set(CHAT_LIBRARIES ${CURSES_LIBRARIES})
+list(APPEND CHAT_INCLUDES ${CURSES_INCLUDE_DIR})

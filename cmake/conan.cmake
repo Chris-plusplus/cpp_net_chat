@@ -1,7 +1,5 @@
 include_guard()
 
-include("${PROJECT_SOURCE_DIR}/cmake/os.cmake")
-
 # check if conan is installed
 execute_process(
 	COMMAND "conan" "--version"
@@ -82,7 +80,8 @@ include("${PROJECT_SOURCE_DIR}/cmake/conan_files/${CHAT_BUILD_TYPE}/conan_toolch
 list(PREPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_LIST_DIR}/conan_files/${CHAT_BUILD_TYPE})
 
 # includes from conan
-include_directories(${CMAKE_INCLUDE_PATH})
+#include_directories(${CMAKE_INCLUDE_PATH})
+set(CHAT_INCLUDES ${CMAKE_INCLUDE_PATH})
 
 # automatic find_package()
 include("${PROJECT_SOURCE_DIR}/cmake/conan_files/${CHAT_BUILD_TYPE}/conandeps_legacy.cmake")
