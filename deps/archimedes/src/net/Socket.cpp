@@ -16,7 +16,8 @@ Socket::Socket(Protocol protocol) {
 	}
 
 	if (_socket == INVALID_SOCKET) {
-		throw NetException(gai_strerror(netErrno()));
+		auto err = netErrno();
+		throw NetException(gai_strerror(err));
 	}
 
 	_proto = protocol;
@@ -153,7 +154,7 @@ Socket::UsableData Socket::usable() const {
 
 	int result = poll(&pollData, 1, 0);
 	if (result != 1) {
-		return {false, false};
+		return { false, false };
 	}
 	if (pollData.revents & POLLERR) {
 		retval = false;
@@ -162,7 +163,7 @@ Socket::UsableData Socket::usable() const {
 		retval = false;
 	}
 	if (not retval) {
-		return {false, false};
+		return { false, false };
 	}
 
 	UsableData data;

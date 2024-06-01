@@ -26,22 +26,22 @@ std::future<Host::FromResult> Host::localhost(bool update, TimeoutMs timeout) {
 			Host host = localhost();
 			auto updateFuture = host.update(t);
 			auto updateResult = updateFuture.get();
-			return {host, updateResult};
+			return { host, updateResult };
 		});
 	}
-	return std::async(std::launch::async, []() -> FromResult { return {localhost(), UpdateResult::none}; });
+	return std::async(std::launch::async, []() -> FromResult { return { localhost(), UpdateResult::none }; });
 }
 
 std::future<Host::FromResult> Host::fromIp(IPv4 ip, bool update, TimeoutMs timeout) {
 	if (update) {
 		return std::async(std::launch::async, [ip = ip, t = timeout]() -> FromResult {
-			Host host{ip};
+			Host host{ ip };
 			auto updateFuture = host.update(t);
 			auto updateResult = updateFuture.get();
-			return {host, updateResult};
+			return { host, updateResult };
 		});
 	}
-	return std::async(std::launch::async, [ip = ip]() -> FromResult { return {Host(ip), UpdateResult::none}; });
+	return std::async(std::launch::async, [ip = ip]() -> FromResult { return { Host(ip), UpdateResult::none }; });
 }
 
 std::future<Host::FromResult> Host::fromHostname(std::string_view hostname, TimeoutMs timeout) {
@@ -49,8 +49,8 @@ std::future<Host::FromResult> Host::fromHostname(std::string_view hostname, Time
 		Host host;
 		host._hostname = h;
 		auto updateFuture = host.update(t);
-		[[maybe_unused]] auto updateResult = updateFuture.get();
-		return {host, UpdateResult::none};
+		auto updateResult = updateFuture.get();
+		return { host, UpdateResult::none };
 	});
 }
 

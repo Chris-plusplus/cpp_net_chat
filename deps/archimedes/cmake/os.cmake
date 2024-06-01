@@ -22,6 +22,4 @@ elseif(ARCHIMEDES_LINUX)
     add_compile_definitions(ARCHIMEDES_UNIX=1)
 
     message(STATUS "OS: Linux")
-    
-    add_compile_options(-fpermissive)
 endif()

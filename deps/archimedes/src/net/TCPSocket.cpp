@@ -26,11 +26,11 @@ TCPSocket::LingerData TCPSocket::linger() const {
 		throw NetException(gai_strerror(netErrno(result)));
 	}
 
-	return {(bool)optval.l_onoff, optval.l_linger};
+	return { (bool)optval.l_onoff, optval.l_linger };
 }
 
 void TCPSocket::linger(LingerData data) {
-	::linger optval{data.linger, data.seconds};
+	::linger optval{ data.linger, data.seconds };
 
 	int result = setsockopt(_socket, SOL_SOCKET, SO_BROADCAST, (char*)&optval, sizeof(optval));
 	if (result != 0) {
@@ -61,7 +61,7 @@ bool TCPSocket::connect(const Host& host, Port port) {
 bool TCPSocket::condConnect(
 	const Host& host,
 	Port port,
-	void* data,
+	const void* data,
 	int dataLen,
 	int responseLen,
 	AcceptResponseHandler handler,
@@ -256,6 +256,10 @@ bool TCPSocket::recv(char* buf, int buflen, int& length, bool peek) {
 bool TCPSocket::recv(char* buf, int buflen, bool peek) {
 	static int ignored;
 	return recv(buf, buflen, ignored, peek);
+}
+
+const IPv4& TCPSocket::getPeer() const {
+	return _peerAddr;
 }
 
 } // namespace arch::net

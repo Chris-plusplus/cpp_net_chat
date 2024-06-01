@@ -5,6 +5,14 @@
 
 namespace arch::net {
 
+Init::Init() {
+	init();
+}
+
+Init::~Init() {
+	cleanup();
+}
+
 void Init::init() {
 #if ARCHIMEDES_WINDOWS
 	WSADATA wsaData;

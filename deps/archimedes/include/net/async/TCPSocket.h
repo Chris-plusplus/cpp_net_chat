@@ -58,6 +58,7 @@ public:
 #if ARCHIMEDES_WINDOWS
 	using net::TCPSocket::exclusive;
 #endif
+	using net::TCPSocket::getPeer;
 	using net::TCPSocket::port;
 	using net::TCPSocket::protocol;
 	using net::TCPSocket::recvBuf;
@@ -84,7 +85,7 @@ public:
 	std::future<bool> condConnect(
 		const Host& host,
 		Port port,
-		void* data,
+		const void* data,
 		int dataLen,
 		int responseLen,
 		AcceptResponseHandler handler,
@@ -142,7 +143,7 @@ public:
 	/// @param timeout - timeout, if negative wait indefinetly
 	/// @param peek - if to copy data but not erase it from socket's buffer (false by default).
 	/// @return true if received data, false otherwise.
-	std::future<bool> recv(char* buf, int buflen, TimeoutMs timeout, bool peek = true);
+	std::future<bool> recv(char* buf, int buflen, TimeoutMs timeout, bool peek = false);
 	/// @brief Asynchronously receives data, waits indefinetely.
 	/// @param buf - buffer to save data to.
 	/// @param buflen - length of buffer.

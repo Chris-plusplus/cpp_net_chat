@@ -13,18 +13,18 @@ class Serializable;
 class TCPSocket: public Socket {
 public:
 	/// @brief Predicate to condAccept().
-	/// @param void* - pointer to acceptance data.
+	/// @param const void* - pointer to acceptance data.
 	/// @param int - length of acceptance data in bytes.
 	/// @param void* - pointer to additional data used by predicate.
 	/// @param void* - pointer to response buffer.
 	/// @param int - response buffer length.
 	/// @retval true if connection accepted, false otherwise.
-	using AcceptCondition = bool (*)(void*, int, void*, void*, int);
+	using AcceptCondition = bool (*)(const void*, int, void*, void*, int);
 	/// @brief Predicate to condConnect().
-	/// @param void* - response data.
+	/// @param const void* - response data.
 	/// @param int - response length.
 	/// @param void* - additional data.
-	using AcceptResponseHandler = bool (*)(void*, int, void*);
+	using AcceptResponseHandler = bool (*)(const void*, int, void*);
 
 	/// @brief data used by linger() methods.
 	///
@@ -89,7 +89,7 @@ public:
 	bool condConnect(
 		const Host& host,
 		Port port,
-		void* data,
+		const void* data,
 		int dataLen,
 		int responseLen,
 		AcceptResponseHandler handler,
@@ -154,6 +154,8 @@ public:
 	/// @param peek - if to copy data but not erase it from socket's buffer (false by default).
 	/// @return true if received data, false otherwise.
 	bool recv(char* buf, int buflen, bool peek = false);
+
+	const IPv4& getPeer() const;
 
 protected:
 

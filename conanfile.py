@@ -5,6 +5,6 @@ class net_chat(ConanFile):
     settings = "build_type"
 
     def requirements(self):
-        self.requires("ncurses/6.3")
+        self.requires("ncurses/6.4")
 
     generators = "CMakeDeps", "CMakeToolchain"

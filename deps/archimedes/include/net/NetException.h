@@ -16,7 +16,4 @@ public:
 	NetException(const std::string& message, const std::source_location& location = std::source_location::current());
 };
 
-// Alias for ease of use.
-using Exception = NetException;
-
 } // namespace arch::net

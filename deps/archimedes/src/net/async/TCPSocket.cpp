@@ -30,7 +30,7 @@ std::future<bool> TCPSocket::connect(const Host& host, Port port) {
 std::future<bool> TCPSocket::condConnect(
 	const Host& host,
 	Port port,
-	void* data,
+	const void* data,
 	int dataLen,
 	int responseLen,
 	AcceptResponseHandler handler,
@@ -38,7 +38,8 @@ std::future<bool> TCPSocket::condConnect(
 ) {
 	return std::async(
 		std::launch::async,
-		[this](const Host& h, Port p, void* d, int dl, int rl, AcceptResponseHandler h2, void* hd = nullptr) -> bool {
+		[this](const Host& h, Port p, const void* d, int dl, int rl, AcceptResponseHandler h2, void* hd = nullptr)
+			-> bool {
 			std::scoped_lock lock(_sendMutex, _recvMutex);
 			return _Base::condConnect(h.sync(), p, d, dl, rl, h2, hd);
 		},
@@ -105,6 +106,9 @@ std::future<bool> TCPSocket::condAccept(
 			TCPSocket& socket = ns.get();
 
 			auto acceptFuture = accept(socket);
+			if (not acceptFuture.get()) {
+				return false;
+			}
 
 			socket._status = 0;
 			auto buffer = std::unique_ptr<char[]>(new char[dl]);

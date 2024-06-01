@@ -67,7 +67,7 @@ AllowBreakBeforeNoexceptSpecifier: OnlyWithParen
 
 # Shorts
 AllowShortBlocksOnASingleLine: Empty
-AllowShortCaseLabelsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
 #AllowShortCompoundRequirementOnASingleLine: true
 AllowShortEnumsOnASingleLine: false
 AllowShortLambdasOnASingleLine: Inline
@@ -176,7 +176,7 @@ SpaceAroundPointerQualifiers: Before
 DerivePointerAlignment: false
 
 # Set the order of includes
-SortIncludes: CaseSensitive
+SortIncludes: Never
 IncludeBlocks: Regroup
 SortUsingDeclarations: LexicographicNumeric
 IncludeCategories:
