@@ -1,6 +1,7 @@
 #pragma once
 
 #include <thread>
+#include <queue>
 
 #include <Net.h>
 
@@ -23,6 +24,7 @@ public:
 
 	static void acceptingLoop(std::stop_token stopToken, Server* _this);
 	static void clientLoop(std::stop_token stopToken, Server* _this, size_t iClient);
+	static void clientThreadCleaner(std::stop_token stopToken, Server* _this, std::shared_ptr<std::jthread> thread);
 
 	static void broadcast(
 		std::stop_token stopToken,
@@ -31,18 +33,18 @@ public:
 		const std::string& message
 	);
 
-	void setPort(arch::net::Socket::Port port);
-	void setPassword(const std::string& password);
-	void setMessage(const std::string& message);
+	bool configurationForm();
 
 	void start();
 
 private:
 	arch::net::async::TCPSocket _listenSocket;
 	arch::net::async::Host _localhost = arch::net::async::Host::localhost();
-	std::vector<arch::net::async::TCPSocket*> _clientSockets;
-	std::vector<std::string> _clientNicks;
-	std::vector<std::jthread> _workerThreads;
+	std::mutex _clientStorageMutex;
+	std::vector<std::shared_ptr<arch::net::async::TCPSocket>> _clientSockets;
+	std::vector<std::shared_ptr<std::string>> _clientNicks;
+	std::mutex _workerThreadsMutex;
+	std::vector<std::shared_ptr<std::jthread>> _workerThreads;
 	arch::net::Socket::Port _port;
 	std::string _password;
 	std::string _message;

@@ -10,8 +10,19 @@ public:
 
 	Client() noexcept = default;
 
+	static void recvLoop(
+		std::stop_token stopToken,
+		Client* _this,
+		int* topLine,
+		int maxX,
+		int maxY,
+		std::vector<std::string>* lines,
+		std::mutex* linesMutex,
+		std::function<void()> refreshWindow
+	);
+
 	bool connectionForm();
-	void display();
+	void chatForm();
 	static bool acceptResponseHandler(const void* response, int, void* retval);
 
 private:

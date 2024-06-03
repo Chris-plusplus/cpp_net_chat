@@ -42,7 +42,7 @@ int main() {
 	FIELD* fields[2];
 	FORM* form;
 
-	fields[0] = new_field(1, max_x - 2 + 100, 0, 0, 0, 0);
+	fields[0] = new_field(1, max_x - 2, 0, 0, 0, 0);
 	set_field_back(fields[0], A_REVERSE);
 	field_opts_off(fields[0], O_STATIC);
 	curs_set(1);
@@ -161,8 +161,11 @@ int main() {
 				}
 				break;
 			default:
-				form_driver(form, ch);
-				wrefresh(form_sub);
+				form_driver(form, REQ_VALIDATION);
+				if (fieldLen(field_buffer(fields[0], 0)) < 255) {
+					form_driver(form, ch);
+					wrefresh(form_sub);
+				}
 				break;
 		}
 	}

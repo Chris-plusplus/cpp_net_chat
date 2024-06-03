@@ -10,6 +10,8 @@ bool responseHandler(const void* response, int responseLen, void*) {
 }
 
 int main() {
+	arch::Logger::init(arch::LogLevel::info);
+
 	setlocale(LC_ALL, "");
 	initscr();
 	raw();
@@ -21,54 +23,51 @@ int main() {
 
 	chat::Client client;
 	if (client.connectionForm()) {
-		printw("git");
-		refresh();
-		getch();
+		client.chatForm();
 	}
-	printw("nie git");
-	refresh();
-	getch();
 
 	endwin();
 
-	/*std::string password = "xd";
-	std::string message;
-	std::string nick;
-	std::uint16_t port = 30'420;*/
+	// std::string password = "xd";
+	// std::string message;
+	// std::string nick;
+	// std::uint16_t port = 30'420;
 
-	/*std::cout << "Password: ";
-	std::cin >> password;
-	std::cout << "Port: ";
-	std::cin >> port;
-	std::cout << "Nick: ";
-	std::cin >> nick;*/
+	///*std::cout << "Password: ";
+	// std::cin >> password;
+	// std::cout << "Port: ";
+	// std::cin >> port;*/
+	// std::cout << "Nick: ";
+	// std::cin >> nick;
 
-	/*std::string connData = std::format("{}\033{}", password, nick);
+	// std::string connData = std::format("{}\033{}", password, nick);
 
-	std::string ip;
-	std::cout << "IP: ";
-	std::cin >> ip;
+	// std::string ip;
+	// std::cout << "IP: ";
+	// std::cin >> ip;
 
-	arch::net::TCPSocket clientSocket;
-	try {
-		std::cout << clientSocket.condConnect(
-						 arch::net::Host(arch::net::IPv4(ip)),
-						 port,
-						 connData.c_str(),
-						 connData.length(),
-						 16,
-						 responseHandler
-					 )
-				  << '\n';
-	} catch (arch::Exception& e) {
-		std::cout << "exception:\n";
-		std::cout << e.what() << '\n';
-		return 1;
-	}
+	// arch::net::TCPSocket clientSocket;
+	// try {
+	//	std::cout << clientSocket.condConnect(
+	//					 arch::net::Host(arch::net::IPv4(ip)),
+	//					 port,
+	//					 connData.c_str(),
+	//					 connData.length(),
+	//					 16,
+	//					 responseHandler
+	//				 )
+	//			  << '\n';
+	// } catch (arch::Exception& e) {
+	//	std::cout << "exception:\n";
+	//	std::cout << e.what() << '\n';
+	//	return 1;
+	// }
 
-	do {
-		std::cout << "Message: ";
-		std::cin >> message;
-		clientSocket.send(message);
-	} while (message != "quit");*/
+	// do {
+	//	std::cout << "Message: ";
+	//	std::cin >> message;
+	//	if (message != "quit") {
+	//		clientSocket.send(message);
+	//	}
+	// } while (message != "quit");
 }

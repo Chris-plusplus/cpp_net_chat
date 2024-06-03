@@ -38,7 +38,7 @@ public:
 	UDPSocket& operator=(UDPSocket&) = delete;
 	/// @brief Deleted assignment operator.
 	///
-	UDPSocket& operator=(UDPSocket&&) = delete;
+	UDPSocket& operator=(UDPSocket&&) = default;
 
 	using net::UDPSocket::address;
 	using net::UDPSocket::bind;

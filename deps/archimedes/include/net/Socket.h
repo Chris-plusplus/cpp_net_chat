@@ -49,6 +49,7 @@ public:
 	/// @details Port number can be accessed by port() method.
 	static const Port randomPort;
 
+	Socket(Socket&&) = default;
 	/// @brief Deleted assignment operator.
 	///
 	Socket& operator=(const Socket&) = delete;
@@ -127,7 +128,6 @@ protected:
 	Socket(Protocol protocol, Port port);
 	Socket(const Socket&) = delete;
 	Socket(Socket&) = delete;
-	Socket(Socket&&) = default;
 	~Socket();
 
 	SockType _socket = INVALID_SOCKET;

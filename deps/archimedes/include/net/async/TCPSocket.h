@@ -42,7 +42,7 @@ public:
 	TCPSocket& operator=(TCPSocket&) = delete;
 	/// @brief Deleted assignment operator.
 	///
-	TCPSocket& operator=(TCPSocket&&) = delete;
+	TCPSocket& operator=(TCPSocket&&) = default;
 
 	using net::TCPSocket::connected;
 	using net::TCPSocket::linger;

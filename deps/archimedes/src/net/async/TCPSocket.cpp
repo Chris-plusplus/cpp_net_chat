@@ -1,5 +1,7 @@
 #include "net/async/TCPSocket.h"
 
+#include <iostream>
+
 #include "net/NetException.h"
 
 namespace arch::net::async {
@@ -197,6 +199,11 @@ std::future<bool> TCPSocket::recv(char* buf, int buflen, int& length, TimeoutMs 
 				throw NetException(gai_strerror(netErrno()));
 			}
 			if (result == 0) { // timeout expired
+				_recvMutex.unlock();
+				return false;
+			}
+			if (pollData.revents & POLLHUP) { // check connection
+				_status = 0;
 				_recvMutex.unlock();
 				return false;
 			}

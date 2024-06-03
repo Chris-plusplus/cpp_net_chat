@@ -1,5 +1,6 @@
 #include "net/TCPSocket.h"
 
+#include <iostream>
 #include <memory>
 
 #include "net/IPv4.h"
@@ -74,6 +75,7 @@ bool TCPSocket::condConnect(
 	int result = ::send(_socket, (char*)data, dataLen, 0);
 	if (result == SOCKET_ERROR) {
 		_peerAddr = IPv4();
+		reset();
 		throw NetException(std::string("while sending connection data: ") + gai_strerror(netErrno()));
 	}
 	auto responseBuffer = std::unique_ptr<char[]>(new char[responseLen]);
@@ -82,9 +84,11 @@ bool TCPSocket::condConnect(
 	result = ::recv(_socket, responseBuffer.get(), responseLen, 0);
 	if (result == SOCKET_ERROR) {
 		_peerAddr = IPv4();
+		reset();
 		throw NetException(std::string("while receiving response: ") + gai_strerror(netErrno()));
 	}
 	if (result == 0) {
+		reset();
 		throw NetException(std::string("peer disconnected before sending response"));
 	}
 	// handle response
@@ -93,8 +97,19 @@ bool TCPSocket::condConnect(
 		return true;
 	} else {
 		_peerAddr = IPv4();
-		throw NetException("peer rejected connection");
+		_status = 0;
+		reset();
+		return false;
 	}
+}
+
+void TCPSocket::reset() {
+	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (_socket == INVALID_SOCKET) {
+		auto err = netErrno();
+		throw NetException(gai_strerror(err));
+	}
+	_proto = Protocol::tcp;
 }
 
 bool TCPSocket::connected() const {
@@ -118,7 +133,7 @@ bool TCPSocket::connectedForce() {
 
 	if (pfd.revents & POLLRDNORM) {
 		char buf;
-		result = ::recv(_socket, &buf, 0, MSG_PEEK);
+		result = ::recv(_socket, &buf, 1, 0);
 		if (result == 0) {
 			_status = 0;
 			return false;
@@ -241,15 +256,14 @@ bool TCPSocket::recv(char* buf, int buflen, int& length, bool peek) {
 	}
 
 	int result = ::recv(_socket, buf, buflen, 0);
+	length = result;
 	if (result == SOCKET_ERROR) {
 		throw NetException(gai_strerror(netErrno()));
 	}
 	if (result == 0) {
 		_status = 0;
-		throw NetException(std::string("peer disconnected"));
 	}
 
-	length = result;
 	return true;
 }
 

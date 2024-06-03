@@ -63,7 +63,7 @@ public:
 	TCPSocket& operator=(TCPSocket&) = delete;
 	/// @brief Deleted assignment operator.
 	///
-	TCPSocket& operator=(TCPSocket&&) = delete;
+	TCPSocket& operator=(TCPSocket&&) = default;
 
 	/// @brief Returns current linger data of socket.
 	///
@@ -156,6 +156,8 @@ public:
 	bool recv(char* buf, int buflen, bool peek = false);
 
 	const IPv4& getPeer() const;
+
+	void reset();
 
 protected:
 
