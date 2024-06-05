@@ -441,7 +441,7 @@ void chat::Server::clientThreadCleaner(std::stop_token stopToken, Server* _this)
 			auto threadsLock = std::scoped_lock(self._workerThreadsMutex);
 			self._workerThreads.erase(id);
 
-			arch::Logger::info("Clened worker thread {}", tidStr(id));
+			arch::Logger::info("Cleaned worker thread {}", tidStr(id));
 		}
 	}
 	arch::Logger::info("{}:{} ended", __func__, tidStr(std::this_thread::get_id()));

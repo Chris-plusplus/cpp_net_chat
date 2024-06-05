@@ -6,21 +6,21 @@
 
 namespace chat {
 
-/// @brief Chat server class. Call configurationForm() and if it succeeds, call run().
+/// @brief Chat server class. Call configurationForm() and if it succeeds, call run()
 class Server {
 public:
 
-	/// @brief Defaulted constructor.
+	/// @brief Defaulted constructor
 	Server() = default;
-	/// @brief Destructor. Cancels all worker threads and releases all resources.
+	/// @brief Destructor. Cancels all worker threads and releases all resources
 	~Server();
 
-	/// @brief Displays configuration form of server.
-	/// @return true if succeeded to configure server.
+	/// @brief Displays configuration form of server
+	/// @return true if succeeded to configure server
 	bool configurationForm();
 
-	/// @brief Starts server.
-	/// @throws std::exception - when server was started without or with bad configuration.
+	/// @brief Starts server
+	/// @throws std::exception - when server was started without or with bad configuration
 	void start();
 
 private:

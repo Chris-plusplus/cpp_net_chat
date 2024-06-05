@@ -1,5 +1,6 @@
 #include "net/TCPSocket.h"
 
+#include <fstream>
 #include <iostream>
 #include <memory>
 
@@ -104,6 +105,7 @@ bool TCPSocket::condConnect(
 }
 
 void TCPSocket::reset() {
+	close();
 	_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (_socket == INVALID_SOCKET) {
 		auto err = netErrno();

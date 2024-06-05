@@ -62,6 +62,7 @@ public:
 	using net::TCPSocket::port;
 	using net::TCPSocket::protocol;
 	using net::TCPSocket::recvBuf;
+	using net::TCPSocket::reset;
 	using net::TCPSocket::reuse;
 	using net::TCPSocket::sendable;
 	using net::TCPSocket::sendBuf;
