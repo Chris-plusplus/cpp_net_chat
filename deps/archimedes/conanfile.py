@@ -8,7 +8,6 @@ class Archimedes(ConanFile):
 
     def requirements(self):
         self.requires("spdlog/1.12.0")
-        self.requires("gtest/1.13.0")
 
     def configure(self):
         if is_msvc(self, True):

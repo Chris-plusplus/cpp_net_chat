@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 #include <Client.h>
 #include <Net.h>
@@ -15,7 +17,6 @@ int main() {
 	setlocale(LC_ALL, "");
 	initscr();
 	raw();
-	// cbreak();
 	noecho();
 	nonl();
 	keypad(stdscr, TRUE);
@@ -26,48 +27,6 @@ int main() {
 		client.chatForm();
 	}
 
+	refresh();
 	endwin();
-
-	// std::string password = "xd";
-	// std::string message;
-	// std::string nick;
-	// std::uint16_t port = 30'420;
-
-	///*std::cout << "Password: ";
-	// std::cin >> password;
-	// std::cout << "Port: ";
-	// std::cin >> port;*/
-	// std::cout << "Nick: ";
-	// std::cin >> nick;
-
-	// std::string connData = std::format("{}\033{}", password, nick);
-
-	// std::string ip;
-	// std::cout << "IP: ";
-	// std::cin >> ip;
-
-	// arch::net::TCPSocket clientSocket;
-	// try {
-	//	std::cout << clientSocket.condConnect(
-	//					 arch::net::Host(arch::net::IPv4(ip)),
-	//					 port,
-	//					 connData.c_str(),
-	//					 connData.length(),
-	//					 16,
-	//					 responseHandler
-	//				 )
-	//			  << '\n';
-	// } catch (arch::Exception& e) {
-	//	std::cout << "exception:\n";
-	//	std::cout << e.what() << '\n';
-	//	return 1;
-	// }
-
-	// do {
-	//	std::cout << "Message: ";
-	//	std::cin >> message;
-	//	if (message != "quit") {
-	//		clientSocket.send(message);
-	//	}
-	// } while (message != "quit");
 }

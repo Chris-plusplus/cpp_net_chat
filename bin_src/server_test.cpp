@@ -16,6 +16,7 @@ int main() {
 	chat::Server server;
 	bool doStart = server.configurationForm();
 
+	refresh();
 	endwin();
 
 	if (doStart) {

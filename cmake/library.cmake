@@ -9,3 +9,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC include ${CHAT_INCLUDES})
 
 # link conan libraries
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CHAT_LIBRARIES} archimedes)
+if(WIN32)
+	target_link_libraries(${PROJECT_NAME} PUBLIC wsock32 ws2_32 iphlpapi)
+endif()

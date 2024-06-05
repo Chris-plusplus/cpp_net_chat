@@ -2,11 +2,15 @@
 #include <iostream>
 #include <set>
 #include <tuple>
+#include <cstring>
+#include <fstream>
 
 #include <Client.h>
 #include <FieldLen.h>
 #include <form.h>
 #include <ncurses.h>
+
+#define ctrl(x) ((x) & 0x1f)
 
 bool chat::Client::acceptResponseHandler(const void* response, int, void* retval) {
 	auto&& out = *(std::string*)retval;
@@ -28,7 +32,7 @@ _redo:;
 		touchwin(stdscr);
 
 		auto printError = [&](const std::string& str) {
-			mvwprintw(formSubwin, maxY - 2, 1, str.c_str());
+			mvwprintw(formSubwin, maxY - 2, 1, "%s", str.c_str());
 			wrefresh(formSubwin);
 		};
 
@@ -79,7 +83,7 @@ _redo:;
 		wrefresh(formSubwin);
 
 		int c;
-		while (connectionType == 0 and (c = getch()) != '\033') {
+		while (connectionType == 0 and (c = getch()) != (('\033'))) {
 			switch (c) {
 				case KEY_UP:
 					unselectField(current_field(form));
@@ -113,6 +117,7 @@ _redo:;
 			free_field(fields[i]);
 		}
 		delwin(formSubwin);
+		refresh();
 
 		if (not connectionType) {
 			return false;
@@ -134,10 +139,10 @@ _redo:;
 		FIELD* fields[6]{};
 		int firstFieldY = (maxY - 4) / 2;
 
-		const int hostnameMax = 253 + 1;
+		const int hostnameMax = 15 + 1;
 		const int portMax = 5 + 1;
 		const int passwordMax = 50 + 1;
-		const int nickMax = 50 + 1;
+		const int nickMax = 25 + 1;
 
 		const int hostnameWidth = std::min(maxX - 2 - (int)sizeof(hostnamePanel) + 1, hostnameMax);
 		const int portWidth = std::min(maxX - 2 - (int)sizeof(portPanel) + 1, portMax);
@@ -183,30 +188,28 @@ _redo:;
 		mvwprintw(formSubwin, 0, (maxX - (sizeof(formTitle) + 1)) / 2, "%s", formTitle);
 		wrefresh(formSubwin);
 
-		mvwprintw(formSubwin, firstFieldY, 1, hostnamePanel);
-		mvwprintw(formSubwin, firstFieldY + 1, 1, portPanel);
-		mvwprintw(formSubwin, firstFieldY + 2, 1, passwordPanel);
-		mvwprintw(formSubwin, firstFieldY + 3, 1, nickPanel);
+		mvwprintw(formSubwin, firstFieldY, 1, "%s", hostnamePanel);
+		mvwprintw(formSubwin, firstFieldY + 1, 1, "%s", portPanel);
+		mvwprintw(formSubwin, firstFieldY + 2, 1, "%s", passwordPanel);
+		mvwprintw(formSubwin, firstFieldY + 3, 1, "%s", nickPanel);
 		set_field_buffer(fields[4], 0, connectPanel);
 		wrefresh(formSubwin);
 
 		auto printError = [&](const std::string& str) {
-			mvwprintw(formSubwin, maxY - 2, 1, str.c_str());
+			mvwprintw(formSubwin, maxY - 2, 1, "%s", str.c_str());
 			wrefresh(formSubwin);
 		};
 		auto resetErrorSpace = [&]() {
 			static const auto emptyStr = std::string(maxX - 2, ' ');
 			int ch = mvwinch(formSubwin, maxY - 2, 1);
 			if ((ch & A_CHARTEXT) != ' ') {
-				mvwprintw(formSubwin, maxY - 2, 1, emptyStr.c_str());
+				mvwprintw(formSubwin, maxY - 2, 1, "%s", emptyStr.c_str());
 				wrefresh(formSubwin);
 			}
 		};
 
-		std::vector<std::string> inputs;
-
 		int c;
-		while ((c = getch()) != '\033') {
+		while ((c = getch()) != (('\033'))) {
 			switch (c) {
 				case KEY_UP:
 					unselectField(current_field(form));
@@ -314,6 +317,7 @@ _redo:;
 									free_field(fields[i]);
 								}
 								delwin(formSubwin);
+								refresh();
 								return true;
 							}
 						} catch (arch::Exception& e) {
@@ -349,12 +353,6 @@ _redo:;
 			free_field(fields[i]);
 		}
 		delwin(formSubwin);
-
-		refresh();
-		printw("%zu\n", inputs.size());
-		for (auto&& o : inputs) {
-			printw("'%s'\n", o.c_str());
-		}
 		refresh();
 
 		return false;
@@ -474,14 +472,14 @@ _redo:;
 			wrefresh(formSubwin);
 		};
 		auto printError = [&](const std::string& str) {
-			mvwprintw(formSubwin, maxY - 2, 1, str.c_str());
+			mvwprintw(formSubwin, maxY - 2, 1, "%s", str.c_str());
 			wrefresh(formSubwin);
 		};
 		auto resetErrorSpace = [&]() {
 			static const auto emptyStr = std::string(maxX - 2, ' ');
 			int ch = mvwinch(formSubwin, maxY - 2, 1);
 			if ((ch & A_CHARTEXT) != ' ') {
-				mvwprintw(formSubwin, maxY - 2, 1, emptyStr.c_str());
+				mvwprintw(formSubwin, maxY - 2, 1, "%s", emptyStr.c_str());
 				wrefresh(formSubwin);
 			}
 		};
@@ -495,7 +493,7 @@ _redo:;
 
 		int c;
 		int field = 0;
-		while ((c = getch()) != '\033') {
+		while ((c = getch()) != (('\033'))) {
 			switch (c) {
 				case KEY_UP:
 					unselectField(current_field(form));
@@ -520,6 +518,7 @@ _redo:;
 						free_field(fields[i]);
 					}
 					delwin(formSubwin);
+					refresh();
 					{
 						int maxY, maxX;
 						getmaxyx(stdscr, maxY, maxX);
@@ -583,28 +582,26 @@ _redo:;
 						mvwprintw(formSubwin, 0, (maxX - (sizeof(formTitle) + 1)) / 2, "%s", formTitle);
 						wrefresh(formSubwin);
 
-						mvwprintw(formSubwin, firstFieldY, 1, passwordPanel);
-						mvwprintw(formSubwin, firstFieldY + 1, 1, nickPanel);
+						mvwprintw(formSubwin, firstFieldY, 1, "%s", passwordPanel);
+						mvwprintw(formSubwin, firstFieldY + 1, 1, "%s", nickPanel);
 						set_field_buffer(fields[2], 0, connectPanel);
 						wrefresh(formSubwin);
 
 						auto printError = [&](const std::string& str) {
-							mvwprintw(formSubwin, maxY - 2, 1, str.c_str());
+							mvwprintw(formSubwin, maxY - 2, 1, "%s", str.c_str());
 							wrefresh(formSubwin);
 						};
 						auto resetErrorSpace = [&]() {
 							static const auto emptyStr = std::string(maxX - 2, ' ');
 							int ch = mvwinch(formSubwin, maxY - 2, 1);
 							if ((ch & A_CHARTEXT) != ' ') {
-								mvwprintw(formSubwin, maxY - 2, 1, emptyStr.c_str());
+								mvwprintw(formSubwin, maxY - 2, 1, "%s", emptyStr.c_str());
 								wrefresh(formSubwin);
 							}
 						};
 
-						std::vector<std::string> inputs;
-
 						int c;
-						while ((c = getch()) != '\033') {
+						while ((c = getch()) != (('\033'))) {
 							switch (c) {
 								case KEY_UP:
 									unselectField(current_field(form));
@@ -684,6 +681,7 @@ _redo:;
 													free_field(fields[i]);
 												}
 												delwin(formSubwin);
+												refresh();
 												return true;
 											}
 										} catch (arch::Exception& e) {
@@ -727,12 +725,6 @@ _redo:;
 							free_field(fields[i]);
 						}
 						delwin(formSubwin);
-
-						refresh();
-						printw("%zu\n", inputs.size());
-						for (auto&& o : inputs) {
-							printw("'%s'\n", o.c_str());
-						}
 						refresh();
 
 						return false;
@@ -764,6 +756,7 @@ _redo:;
 								free_field(fields[i]);
 							}
 							delwin(formSubwin);
+							refresh();
 							return true;
 						}
 					} catch (arch::Exception& e) {
@@ -787,6 +780,7 @@ _redo:;
 			free_field(fields[i]);
 		}
 		delwin(formSubwin);
+		refresh();
 	}
 
 	return false;
@@ -855,7 +849,7 @@ void chat::Client::chatForm() {
 	refreshWindow();
 
 	// Main loop for handling input
-	while ((ch = getch()) != '\033') { // Press Esc to quit
+	while ((ch = getch()) != (('\033'))) { // Press Esc to quit
 		switch (ch) {
 			case KEY_UP:
 				if (topLine > 0) {
@@ -879,6 +873,9 @@ void chat::Client::chatForm() {
 			case KEY_BACKSPACE:
 				form_driver(form, REQ_DEL_PREV);
 				break;
+			case KEY_DC:
+				form_driver(form, REQ_DEL_CHAR);
+				break;
 			case '\n':
 			case '\r':
 			case KEY_ENTER:
@@ -900,6 +897,8 @@ void chat::Client::chatForm() {
 		}
 	}
 
+	refresh();
+
 	receiverThread.request_stop();
 	this->_socket.close();
 	receiverThread.join();
@@ -910,6 +909,7 @@ void chat::Client::chatForm() {
 	free_field(fields[0]);
 	delwin(formSubwin);
 	delwin(recvWin);
+	refresh();
 }
 
 void chat::Client::recvLoop(
@@ -924,25 +924,29 @@ void chat::Client::recvLoop(
 ) {
 	auto&& self = *_this;
 	char buf[256]{};
-	while (not stopToken.stop_requested()) {
-		auto recvFuture = self._socket.recv(buf, sizeof(buf) - 1);
-		if (recvFuture.get()) {
-			{
-				auto lock = std::scoped_lock(*linesMutex);
-				lines->push_back(buf);
+	while (not stopToken.stop_requested() and self._socket.connected()) {
+		try {
+			auto recvFuture = self._socket.recv(buf, sizeof(buf) - 1);
+			if (recvFuture.get()) {
+				{
+					auto lock = std::scoped_lock(*linesMutex);
+					lines->push_back(buf);
+					if (*topLine + maxY - 3 == lines->size() - 1) {
+						++topLine;
+					}
+				}
+				refreshWindow();
+				std::memset(buf, 0, sizeof(buf));
+			} else if (not self._socket.connected()) {
+				lines->push_back(std::format("Server {}:{} disconnected", self._ip.str(), self._port));
 				if (*topLine + maxY - 3 == lines->size() - 1) {
 					++topLine;
 				}
+				refreshWindow();
+				return;
 			}
-			refreshWindow();
-			std::memset(buf, 0, sizeof(buf));
-		} else if (not self._socket.connected()) {
-			lines->push_back(std::format("Server {}:{} disconnected", self._ip.str(), self._port));
-			if (*topLine + maxY - 3 == lines->size() - 1) {
-				++topLine;
-			}
-			refreshWindow();
-			break;
+		} catch (...) {
+			return;
 		}
 	}
 }

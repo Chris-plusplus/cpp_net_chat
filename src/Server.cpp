@@ -3,6 +3,9 @@
 #include <ncurses.h>
 #include <form.h>
 #include <FieldLen.h>
+#include <cstring>
+
+#define ctrl(x) ((x) & 0x1f)
 
 void chat::Server::broadcast(
 	std::stop_token stopToken,
@@ -54,18 +57,18 @@ bool chat::Server::acceptCondition(
 
 	auto delimPos = acceptDataStr.find('\033');
 	if (delimPos == std::string::npos) {
-		memcpy(responseBuf, "badFmt", sizeof("badFmt"));
+		memcpy(responseBuf, "Bad format", sizeof("Bad format"));
 		return false;
 	}
 
 	std::string_view password = acceptDataStr.substr(0, delimPos);
 	if (password != self._password) {
-		memcpy(responseBuf, "invalidPasswd", sizeof("invalidPasswd"));
+		memcpy(responseBuf, "Invalid password", sizeof("Invalid password"));
 		return false;
 	}
 
 	if (acceptDataStr.length() == delimPos) {
-		memcpy(responseBuf, "emptyNick", sizeof("emptyNick"));
+		memcpy(responseBuf, "Empty nick", sizeof("Empty nick"));
 		return false;
 	}
 
@@ -77,7 +80,7 @@ bool chat::Server::acceptCondition(
 				self._clientNicks.end(),
 				[&](const std::shared_ptr<std::string>& ptr) { return *ptr == nick; }
 			) != self._clientNicks.end()) {
-			memcpy(responseBuf, "nickInUse", sizeof("nickInUse"));
+			memcpy(responseBuf, "Nick already in use", sizeof("Nick already in use"));
 			return false;
 		}
 
@@ -106,7 +109,7 @@ void chat::Server::clientLoop(std::stop_token stopToken, Server* _this, size_t i
 	char message[256]{};
 
 	while (not stopToken.stop_requested() and mySock->connected()) {
-		if (mySock->recv(message, sizeof(message)).get()) {
+		if (mySock->recv(message, sizeof(message), 1'000, false).get()) {
 			arch::Logger::info("{}({}): '{}'", mySock->getPeer().str(), *myNick, message);
 
 			{
@@ -156,7 +159,7 @@ void chat::Server::acceptingLoop(std::stop_token stopToken, Server* _this) {
 		arch::Logger::info("Listener awaits connections...");
 
 		auto newSock = std::make_shared<arch::net::async::TCPSocket>();
-		std::future<bool> acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 16, &self);
+		std::future<bool> acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 32, &self);
 		while (not stopToken.stop_requested()) {
 			auto result = acceptFuture.wait_for(std::chrono::milliseconds(100));
 			if (result == std::future_status::ready) {
@@ -185,7 +188,7 @@ void chat::Server::acceptingLoop(std::stop_token stopToken, Server* _this) {
 					newSock = nullptr;
 				}
 				newSock = std::make_shared<arch::net::async::TCPSocket>();
-				acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 16, &self);
+				acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 32, &self);
 			}
 		}
 	} catch (arch::Exception& e) {
@@ -317,29 +320,27 @@ bool chat::Server::configurationForm() {
 	mvwprintw(formSubwin, 0, (maxX - (sizeof(formTitle) + 1)) / 2, "%s", formTitle);
 	wrefresh(formSubwin);
 
-	mvwprintw(formSubwin, firstFieldY, 1, portPanel);
-	mvwprintw(formSubwin, firstFieldY + 1, 1, passwordPanel);
-	mvwprintw(formSubwin, firstFieldY + 2, 1, messagePanel);
+	mvwprintw(formSubwin, firstFieldY, 1, "%s", portPanel);
+	mvwprintw(formSubwin, firstFieldY + 1, 1, "%s", passwordPanel);
+	mvwprintw(formSubwin, firstFieldY + 2, 1, "%s", messagePanel);
 	set_field_buffer(fields[3], 0, startPanel);
 	wrefresh(formSubwin);
 
 	auto printError = [&](const std::string& str) {
-		mvwprintw(formSubwin, maxY - 2, 1, str.c_str());
+		mvwprintw(formSubwin, maxY - 2, 1, "%s", str.c_str());
 		wrefresh(formSubwin);
 	};
 	auto resetErrorSpace = [&]() {
 		static const auto emptyStr = std::string(maxX - 2, ' ');
 		int ch = mvwinch(formSubwin, maxY - 2, 1);
 		if ((ch & A_CHARTEXT) != ' ') {
-			mvwprintw(formSubwin, maxY - 2, 1, emptyStr.c_str());
+			mvwprintw(formSubwin, maxY - 2, 1, "%s", emptyStr.c_str());
 			wrefresh(formSubwin);
 		}
 	};
 
-	std::vector<std::string> inputs;
-
 	int c;
-	while ((c = getch()) != '\033') {
+	while ((c = getch()) != (('\033'))) {
 		switch (c) {
 			case KEY_UP:
 				unselectField(current_field(form));
@@ -411,6 +412,7 @@ bool chat::Server::configurationForm() {
 						free_field(fields[i]);
 					}
 					delwin(formSubwin);
+					refresh();
 					return true;
 				}
 				break;
@@ -435,12 +437,6 @@ bool chat::Server::configurationForm() {
 		free_field(fields[i]);
 	}
 	delwin(formSubwin);
-
-	refresh();
-	printw("%zu\n", inputs.size());
-	for (auto&& o : inputs) {
-		printw("'%s'\n", o.c_str());
-	}
 	refresh();
 
 	return false;

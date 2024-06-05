@@ -12,8 +12,6 @@ public:
 	Server() = default;
 	~Server();
 
-	// void configurationForm();
-
 	static bool acceptCondition(
 		const void* acceptanceData,
 		int acceptanceDataLen,

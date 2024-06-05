@@ -37,6 +37,7 @@ Socket::~Socket() {
 
 void Socket::close() {
 	if (_socket != INVALID_SOCKET) {
+		shutdown(_socket, SHUT_RDWR);
 		int result = closesocket(_socket);
 		if (result != 0) {
 			throw NetException(gai_strerror(netErrno(result)));

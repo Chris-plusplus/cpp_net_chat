@@ -6,7 +6,7 @@
 #include <WinSock2.h>
 #include <iphlpapi.h>
 
-#pragma comment(lib, "iphlpapi.lib")
+// #pragma comment(lib, "iphlpapi.lib")
 #else
 #include <ifaddrs.h>
 #include <netinet/in.h>
