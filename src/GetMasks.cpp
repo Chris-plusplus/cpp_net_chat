@@ -13,6 +13,10 @@
 #include <arpa/inet.h>
 #endif
 
+arch::net::IPv4Mask chat::getMasks(const arch::net::IPv4& ip) {
+	return getMasks(std::vector({ ip })).front();
+}
+
 std::vector<arch::net::IPv4Mask> chat::getMasks(const std::vector<arch::net::IPv4>& ips) {
 #if CHAT_WINDOWS
 	ULONG retval = 0;

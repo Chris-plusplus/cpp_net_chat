@@ -4,261 +4,8 @@
 #include <form.h>
 #include <FieldLen.h>
 #include <cstring>
-
-#define ctrl(x) ((x) & 0x1f)
-
-void chat::Server::broadcast(
-	std::stop_token stopToken,
-	arch::net::IPv4 ip,
-	arch::net::Socket::Port port,
-	const std::string& message
-) {
-	arch::net::UDPSocket socket;
-	socket.broadcastEnabled(true);
-
-	try {
-		socket.bind(ip, port);
-	} catch (arch::Exception& e) {
-		arch::Logger::error("Broadcast socket for {}:{} failed to bind", ip.str(), port);
-		return;
-	}
-
-	arch::net::IPv4Mask mask;
-	try {
-		mask = getMasks({ ip }).at(0);
-	} catch (...) {
-		arch::Logger::error("Could not get mask for address {}", ip.str());
-		return;
-	}
-
-	arch::net::IPv4Network net(ip, mask);
-	auto broadcastIP = net.broadcast();
-
-	arch::Logger::info("Broadcasting from {} to {}", ip.str(), broadcastIP.str());
-
-	std::string broadcastData = std::format("{}\033{}\033{}", ip.str(), port, message);
-	while (not stopToken.stop_requested()) {
-		socket.sendTo(arch::net::Host(ip), 13'370, broadcastData);
-		// arch::Logger::info("broadcasting {}:{} ### {}", ip.str(), port, stopToken.stop_requested());
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
-	arch::Logger::info("stopped {}", __func__);
-}
-
-bool chat::Server::acceptCondition(
-	const void* acceptanceData,
-	int acceptanceDataLen,
-	void* _this,
-	void* responseBuf,
-	int responseBufLen
-) {
-	Server& self = *(Server*)_this;
-	std::string_view acceptDataStr{ (const char*)acceptanceData };
-
-	auto delimPos = acceptDataStr.find('\033');
-	if (delimPos == std::string::npos) {
-		memcpy(responseBuf, "Bad format", sizeof("Bad format"));
-		return false;
-	}
-
-	std::string_view password = acceptDataStr.substr(0, delimPos);
-	if (password != self._password) {
-		memcpy(responseBuf, "Invalid password", sizeof("Invalid password"));
-		return false;
-	}
-
-	if (acceptDataStr.length() == delimPos) {
-		memcpy(responseBuf, "Empty nick", sizeof("Empty nick"));
-		return false;
-	}
-
-	{
-		auto lock = std::scoped_lock(self._clientStorageMutex);
-		std::string_view nick = acceptDataStr.substr(delimPos + 1);
-		if (std::find_if(
-				self._clientNicks.begin(),
-				self._clientNicks.end(),
-				[&](const std::shared_ptr<std::string>& ptr) { return *ptr == nick; }
-			) != self._clientNicks.end()) {
-			memcpy(responseBuf, "Nick already in use", sizeof("Nick already in use"));
-			return false;
-		}
-
-		self._clientNicks.push_back(std::make_shared<std::string>(nick));
-		arch::Logger::info("push {} -> {}", nick, (void*)self._clientNicks.back().get());
-	}
-
-	memcpy(responseBuf, "success", sizeof("success"));
-	return true;
-}
-
-void chat::Server::clientLoop(std::stop_token stopToken, Server* _this, size_t iClient) {
-	auto&& self = *_this;
-
-	std::shared_ptr<arch::net::async::TCPSocket> mySock;
-	std::shared_ptr<std::string> myNick;
-
-	{
-		auto lock = std::scoped_lock(self._clientStorageMutex);
-		mySock = self._clientSockets[iClient];
-		myNick = self._clientNicks[iClient];
-	}
-
-	arch::Logger::info("get {} -> {}", (void*)&myNick, *myNick);
-
-	char message[256]{};
-
-	while (not stopToken.stop_requested() and mySock->connected()) {
-		if (mySock->recv(message, sizeof(message), 1'000, false).get()) {
-			arch::Logger::info("{}({}): '{}'", mySock->getPeer().str(), *myNick, message);
-
-			{
-				auto lock = std::scoped_lock(self._clientStorageMutex);
-				for (auto&& sock : self._clientSockets) {
-					sock->send(std::format("'{}': {}", *myNick, message));
-				}
-			}
-
-			std::memset(message, 0, sizeof(message));
-		} else if (not mySock->connected()) {
-			arch::Logger::info("{}({}) disconnected", mySock->getPeer().str(), *myNick);
-
-			{
-				auto lock = std::scoped_lock(self._clientStorageMutex);
-				for (auto&& sock : self._clientSockets) {
-					if (sock != mySock) {
-						sock->send(std::format("'{}' disconnected", *myNick));
-					}
-				}
-				self._clientNicks.erase(std::find(self._clientNicks.begin(), self._clientNicks.end(), myNick));
-				self._clientSockets.erase(std::find(self._clientSockets.begin(), self._clientSockets.end(), mySock));
-			}
-			break;
-		}
-	}
-	arch::Logger::info("stopped {}", __func__);
-}
-
-void chat::Server::clientThreadCleaner(std::stop_token stopToken, Server* _this, std::shared_ptr<std::jthread> thread) {
-	auto&& self = *_this;
-	auto id = thread->get_id();
-	thread->join();
-	if (not stopToken.stop_requested()) {
-		auto lock = std::scoped_lock(self._workerThreadsMutex);
-		std::erase(self._workerThreads, thread);
-	}
-	std::stringstream ss;
-	ss << id;
-	arch::Logger::info("freed client handling thread {}", ss.str());
-}
-
-void chat::Server::acceptingLoop(std::stop_token stopToken, Server* _this) {
-	try {
-		auto&& self = *_this;
-
-		arch::Logger::info("Listener awaits connections...");
-
-		auto newSock = std::make_shared<arch::net::async::TCPSocket>();
-		std::future<bool> acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 32, &self);
-		while (not stopToken.stop_requested()) {
-			auto result = acceptFuture.wait_for(std::chrono::milliseconds(100));
-			if (result == std::future_status::ready) {
-				if (acceptFuture.get()) {
-					auto lock = std::scoped_lock(self._clientStorageMutex, self._workerThreadsMutex);
-
-					for (auto&& sock : self._clientSockets) {
-						sock->send(std::format("'{}' connected", *self._clientNicks.back()));
-					}
-
-					self._clientSockets.push_back(newSock);
-					newSock = nullptr;
-					self._workerThreads.emplace_back(
-						std::make_shared<std::jthread>(std::jthread(clientLoop, _this, self._clientSockets.size() - 1))
-					);
-					self._workerThreads.emplace_back(std::make_shared<std::jthread>(
-						std::jthread(clientThreadCleaner, _this, self._workerThreads.back())
-					));
-					arch::Logger::info(
-						"Accepted new client: {}({})",
-						self._clientSockets.back()->getPeer().str(),
-						*self._clientNicks.back()
-					);
-				} else {
-					arch::Logger::info("Rejected connection");
-					newSock = nullptr;
-				}
-				newSock = std::make_shared<arch::net::async::TCPSocket>();
-				acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 32, &self);
-			}
-		}
-	} catch (arch::Exception& e) {
-		if (not stopToken.stop_requested()) {
-			arch::Logger::critical("{}, {};{}", e.what(), e.location().file_name(), e.location().line());
-		}
-	} catch (std::exception& e) {
-		arch::Logger::critical("xd: {}", e.what());
-	}
-	arch::Logger::info("stopped {}", __func__);
-}
-
-void chat::Server::start() {
-	this->_localhost.update().wait();
-
-	if (not _listenSocket.bind(_port)) {
-		arch::Logger::critical("Could not bind listening socket at port {}", _port);
-		return;
-	}
-	arch::Logger::info("Bound listening socket on port {}", _port);
-	if (not _listenSocket.listen().get()) {
-		arch::Logger::critical("Could not set socket to listening mode");
-		return;
-	}
-	arch::Logger::info("Put socket into listening mode");
-
-	// accepting thread
-	{
-		auto lock = std::scoped_lock(this->_workerThreadsMutex);
-		_workerThreads.emplace_back(std::make_shared<std::jthread>(std::jthread(acceptingLoop, this)));
-		for (auto&& ip : this->_localhost.ips()) {
-			_workerThreads.emplace_back(
-				std::make_shared<std::jthread>(std::jthread(broadcast, ip, this->_port, this->_message))
-			);
-		}
-	}
-}
-
-chat::Server::~Server() {
-	arch::Logger::info("requesting stop of worker threads...");
-	{
-		auto lock = std::scoped_lock(this->_workerThreadsMutex);
-		for (auto&& thread : this->_workerThreads) {
-			std::stringstream ss;
-			ss << thread->get_id();
-			thread->request_stop();
-			arch::Logger::info("requested stop of worker thread {}", ss.str());
-		}
-	}
-	{
-		auto lock = std::scoped_lock(this->_clientStorageMutex);
-		_listenSocket.close();
-		for (auto&& sock : this->_clientSockets) {
-			sock->close();
-		}
-	}
-	{
-		auto lock = std::scoped_lock(this->_workerThreadsMutex);
-		for (auto&& thread : this->_workerThreads) {
-			if (thread->joinable()) {
-				auto id = thread->get_id();
-				thread->join();
-				std::stringstream ss;
-				ss << id;
-				arch::Logger::info("stopped worker thread {}", ss.str());
-			}
-		}
-	}
-	arch::Logger::info("stopped all worker threads");
-}
+#include <exception>
+#include <ThreadIDStr.hpp>
 
 bool chat::Server::configurationForm() {
 	int maxY, maxX;
@@ -440,4 +187,292 @@ bool chat::Server::configurationForm() {
 	refresh();
 
 	return false;
+}
+
+void chat::Server::start() {
+	if (this->_port == 0) {
+		throw std::runtime_error("server is not configured");
+	}
+
+	if (not _listenSocket.bind(_port)) {
+		arch::Logger::critical("Could not bind listening socket at port {}", _port);
+		return;
+	}
+	arch::Logger::info("Bound listening socket on port {}", _port);
+	if (not _listenSocket.listen().get()) {
+		arch::Logger::critical("Could not set socket to listening mode");
+		return;
+	}
+	arch::Logger::info("Put socket into listening mode at port {}", this->_port);
+
+	{ // creating basic worker threads
+		auto lock = std::scoped_lock(this->_workerThreadsMutex);
+
+		// accepting thread
+		auto newThread = std::make_shared<std::jthread>(std::jthread(acceptingLoop, this));
+		auto newThreadID = newThread->get_id();
+		_workerThreads.insert({ newThreadID, std::move(newThread) });
+
+		// broadcasting threads
+		auto localhost = arch::net::async::Host::localhost();
+		localhost.update().wait();
+		for (auto&& ip : localhost.ips()) {
+			arch::Logger::trace("Using IP: {}", ip.str());
+			newThread = std::make_shared<std::jthread>(std::jthread(broadcast, ip, this->_port, this->_message));
+			newThreadID = newThread->get_id();
+			_workerThreads.insert({ newThreadID, std::move(newThread) });
+		}
+
+		// cleaner of client handling threads
+		newThread = std::make_shared<std::jthread>(std::jthread(clientThreadCleaner, this));
+		newThreadID = newThread->get_id();
+		_workerThreads.insert({ newThreadID, std::move(newThread) });
+	}
+}
+
+void chat::Server::broadcast(
+	std::stop_token stopToken,
+	arch::net::IPv4 ip,
+	arch::net::Socket::Port port,
+	const std::string& message
+) {
+	arch::net::UDPSocket socket;
+	socket.broadcastEnabled(true);
+
+	arch::net::IPv4Mask mask;
+	try {
+		mask = getMasks(ip);
+	} catch (...) {
+		arch::Logger::error("Could not get mask for address {}, cannot broadcast", ip.str());
+		return;
+	}
+
+	auto net = arch::net::IPv4Network(ip, mask);
+	auto broadcastIP = net.broadcast();
+
+	arch::Logger::info("Broadcasting from {} to {}, at port 13370", ip.str(), broadcastIP.str());
+
+	std::string broadcastData = std::format("{}\033{}\033{}", ip.str(), port, message);
+	while (not stopToken.stop_requested()) {
+		auto result = socket.sendTo(broadcastIP, 13'370, broadcastData);
+		// arch::Logger::info("broadcasting {}:{} ### {}, result: {}", ip.str(), port, stopToken.stop_requested(),
+		// result);
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
+	arch::Logger::info("{}:{} ended", __func__, tidStr(std::this_thread::get_id()));
+}
+
+bool chat::Server::acceptCondition(
+	const void* acceptanceData,
+	int acceptanceDataLen,
+	void* _this,
+	void* responseBuf,
+	int responseBufLen
+) {
+	Server& self = *(Server*)_this;
+	// data sent by client
+	std::string_view acceptDataStr{ (const char*)acceptanceData };
+
+	// required format "<password>\033<nick>"
+	auto delimPos = acceptDataStr.find('\033');
+	if (delimPos == std::string::npos) {
+		memcpy(responseBuf, "Bad format", sizeof("Bad format"));
+		return false;
+	}
+
+	// extract password
+	std::string_view password = acceptDataStr.substr(0, delimPos);
+	if (password != self._password) {
+		memcpy(responseBuf, "Invalid password", sizeof("Invalid password"));
+		return false;
+	}
+
+	// extract nick
+	if (acceptDataStr.length() == delimPos) {
+		memcpy(responseBuf, "Empty nick", sizeof("Empty nick"));
+		return false;
+	}
+
+	{ // add client if nick is unique
+		auto lock = std::scoped_lock(self._clientStorageMutex);
+		std::string_view nick = acceptDataStr.substr(delimPos + 1);
+		if (std::find_if(
+				self._clientNicks.begin(),
+				self._clientNicks.end(),
+				[&](const std::shared_ptr<std::string>& ptr) { return *ptr == nick; }
+			) != self._clientNicks.end()) {
+			memcpy(responseBuf, "Nick already in use", sizeof("Nick already in use"));
+			return false;
+		}
+
+		self._clientNicks.push_back(std::make_shared<std::string>(nick));
+	}
+
+	memcpy(responseBuf, "success", sizeof("success"));
+	return true;
+}
+
+void chat::Server::acceptingLoop(std::stop_token stopToken, Server* _this) {
+	try {
+		auto&& self = *_this;
+
+		arch::Logger::info("Listener awaits connections...");
+
+		auto newSock = std::make_shared<arch::net::async::TCPSocket>();
+		std::future<bool> acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 32, &self);
+		while (not stopToken.stop_requested()) {
+			auto result = acceptFuture.wait_for(std::chrono::milliseconds(100));
+			if (result == std::future_status::ready) {
+				if (acceptFuture.get()) {
+					auto lock = std::scoped_lock(self._clientStorageMutex, self._workerThreadsMutex);
+
+					for (auto&& sock : self._clientSockets) {
+						sock->send(std::format("'{}' connected", *self._clientNicks.back()));
+					}
+
+					self._clientSockets.push_back(newSock);
+					newSock = nullptr;
+					auto newThread =
+						std::make_shared<std::jthread>(std::jthread(clientLoop, _this, self._clientSockets.size() - 1));
+					auto newThreadID = newThread->get_id();
+					self._workerThreads.insert({ newThreadID, std::move(newThread) });
+					arch::Logger::info(
+						"Accepted new client: {}({})",
+						self._clientSockets.back()->getPeer().str(),
+						*self._clientNicks.back()
+					);
+				} else {
+					arch::Logger::info("Rejected connection from {}", newSock->getPeer().str());
+					newSock = nullptr;
+				}
+				newSock = std::make_shared<arch::net::async::TCPSocket>();
+				acceptFuture = self._listenSocket.condAccept(*newSock, acceptCondition, 128, 32, &self);
+			}
+		}
+	} catch (arch::Exception& e) {
+		if (not stopToken.stop_requested()) {
+			arch::Logger::critical(
+				"Unexpected error: {}, from {}:{}",
+				e.what(),
+				e.location().file_name(),
+				e.location().line()
+			);
+		}
+	} catch (std::exception& e) {
+		arch::Logger::critical("Unexpected error: {}", e.what());
+	}
+	arch::Logger::info("{}:{} ended", __func__, tidStr(std::this_thread::get_id()));
+}
+
+void chat::Server::clientLoop(std::stop_token stopToken, Server* _this, size_t iClient) {
+	auto&& self = *_this;
+
+	std::shared_ptr<arch::net::async::TCPSocket> mySock;
+	std::shared_ptr<std::string> myNick;
+	{
+		auto lock = std::scoped_lock(self._clientStorageMutex);
+		mySock = self._clientSockets[iClient];
+		myNick = self._clientNicks[iClient];
+	}
+
+	arch::Logger::info(
+		"Started client handling thread {} for client {}({})",
+		tidStr(std::this_thread::get_id()),
+		mySock->getPeer().str(),
+		*myNick
+	);
+
+	char message[256]{};
+
+	while (not stopToken.stop_requested() and mySock->connected()) {
+		if (mySock->recv(message, sizeof(message), 1'000, false).get()) {
+			arch::Logger::info("{}({}): '{}'", mySock->getPeer().str(), *myNick, message);
+
+			{ // send message to clients
+				auto lock = std::scoped_lock(self._clientStorageMutex);
+				for (auto&& sock : self._clientSockets) {
+					sock->send(std::format("'{}': {}", *myNick, message));
+				}
+			}
+
+			// reset buffer
+			std::memset(message, 0, sizeof(message));
+		} else if (not mySock->connected()) {
+			arch::Logger::info("{}({}) disconnected", mySock->getPeer().str(), *myNick);
+
+			{ // send that client has disconnected
+				auto lock = std::scoped_lock(self._clientStorageMutex);
+				for (auto&& sock : self._clientSockets) {
+					if (sock != mySock) {
+						sock->send(std::format("'{}' disconnected", *myNick));
+					}
+				}
+
+				// cleanup
+				self._clientNicks.erase(std::find(self._clientNicks.begin(), self._clientNicks.end(), myNick));
+				self._clientSockets.erase(std::find(self._clientSockets.begin(), self._clientSockets.end(), mySock));
+			}
+			break;
+		}
+	}
+	{ // add this thread to finished queue
+		auto lock = std::scoped_lock(self._finishedQueueMutex);
+		self._finishedQueue.push(std::this_thread::get_id());
+		self._finishedQueueCV.notify_one();
+	}
+	arch::Logger::info("{}:{} ended", __func__, tidStr(std::this_thread::get_id()));
+}
+
+void chat::Server::clientThreadCleaner(std::stop_token stopToken, Server* _this) {
+	auto&& self = *_this;
+
+	arch::Logger::info("Started client cleaner thread {}", tidStr(std::this_thread::get_id()));
+
+	auto lock = std::unique_lock(self._finishedQueueMutex);
+	while (not stopToken.stop_requested() or not self._finishedQueue.empty()) {
+		// wait for some thread to finish
+		self._finishedQueueCV.wait(lock, [&]() {
+			return stopToken.stop_requested() or not self._finishedQueue.empty();
+		});
+		while (not stopToken.stop_requested() and not self._finishedQueue.empty()) {
+			auto id = self._finishedQueue.front();
+			self._finishedQueue.pop();
+
+			auto threadsLock = std::scoped_lock(self._workerThreadsMutex);
+			self._workerThreads.erase(id);
+
+			arch::Logger::info("Clened worker thread {}", tidStr(id));
+		}
+	}
+	arch::Logger::info("{}:{} ended", __func__, tidStr(std::this_thread::get_id()));
+}
+
+chat::Server::~Server() {
+	arch::Logger::info("Requesting stop of worker threads");
+	{
+		auto lock = std::scoped_lock(this->_workerThreadsMutex);
+		for (auto&& [threadID, thread] : this->_workerThreads) {
+			thread->request_stop();
+			arch::Logger::info("Requested stop of worker thread {}", tidStr(threadID));
+		}
+		this->_finishedQueueCV.notify_one();
+	}
+	{
+		auto lock = std::scoped_lock(this->_clientStorageMutex);
+		_listenSocket.close();
+		for (auto&& sock : this->_clientSockets) {
+			sock->close();
+		}
+		arch::Logger::info("Closed all sockets");
+	}
+	{
+		auto lock = std::scoped_lock(this->_workerThreadsMutex);
+		for (auto&& [threadID, thread] : this->_workerThreads) {
+			if (thread->joinable()) {
+				thread->join();
+				arch::Logger::info("Stopped worker thread {}", tidStr(threadID));
+			}
+		}
+	}
+	arch::Logger::info("Stopped all worker threads");
 }

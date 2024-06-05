@@ -4,10 +4,10 @@
 
 int main() {
 	arch::Logger::init(arch::LogLevel::info);
+
 	setlocale(LC_ALL, "");
 	initscr();
 	raw();
-	// cbreak();
 	noecho();
 	nonl();
 	keypad(stdscr, TRUE);
@@ -26,6 +26,6 @@ int main() {
 		do {
 			std::cin >> cmd;
 		} while (cmd != "quit");
-		arch::Logger::info("quitting");
+		arch::Logger::info("Quitting");
 	}
 }

@@ -4,11 +4,11 @@
 #include <tuple>
 #include <cstring>
 #include <fstream>
-
 #include <Client.h>
 #include <FieldLen.h>
 #include <form.h>
 #include <ncurses.h>
+#include <ThreadIDStr.hpp>
 
 #define ctrl(x) ((x) & 0x1f)
 

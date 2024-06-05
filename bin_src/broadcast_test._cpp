@@ -1,0 +1,13 @@
+#include <iostream>
+#include <Net.h>
+
+int main() {
+	arch::net::UDPSocket sock;
+	sock.broadcastEnabled(true);
+	int c;
+	while (true) {
+		sock.sendTo(arch::net::IPv4("10.204.255.255"), 13'370, "broadcast_test");
+		std::cout << "send\n";
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+}

@@ -10,7 +10,7 @@ Pisanie i odczyt wiadomości odbywa się w oknie konsoli/terminala.
 
 ### Funkcjonalności
 
-Serwer jest konfigurowalny poprzez formularz. Po konfiguracji serwer nasłuchuje na połączenia. Cały czas w odstępach 0.1s wysyła pakiety broadcast z informacją pozwalającą klientom na automatyczne znalezienie go.
+Serwer jest konfigurowalny poprzez formularz. Po konfiguracji serwer nasłuchuje na połączenia. Cały czas w odstępach 0.5s wysyła pakiety broadcast z informacją pozwalającą klientom na automatyczne znalezienie go.
 
 Klient ma możliwość łączenia manualnego lub automatycznego. W przypadku wybrania drugiej opcji, klient spróbuje odszukać nadające w sieci serwery.
 
