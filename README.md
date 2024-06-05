@@ -1,11 +1,11 @@
 # C++ Net Chat
 
-Napisany głownie jako projekt zaliczeniowy przedmiotu `C++`.
-Pierwszy większy test podmodułu sieciowego silnika gier [Archimedes](https://github.com/AGH-Code-Industry/archimedes).
+Napisany głownie jako projekt zaliczeniowy przedmiotu `C++`. <br>
+Pierwszy większy test podmodułu sieciowego z silnika gier [Archimedes](https://github.com/AGH-Code-Industry/archimedes).
 
 ## Opis
 
-Jest to prosty czat internetowy w architekturze klient-serwer, na protokole TCP.
+Jest to prosty czat internetowy w architekturze klient-serwer, na protokole TCP. <br>
 Pisanie i odczyt wiadomości odbywa się w oknie konsoli/terminala.
 
 ### Funkcjonalności
@@ -96,6 +96,11 @@ cmake --build .
 
 Na Linuxie w folderze `build` powinny pojawić się 2 pliki wykonywalne `client` i `server`.
 Na Windowsie w folderze `out/build/.../` powinny pojawić się 2 pliki wykonywalne `client.exe` i `server.exe`.
+
+Programy działają poprawnie na:
+- Windows 11 (22631.3593)
+- WSL2 Ubuntu 22.04.3 (5.15.146.1-microsoft-standard-WSL2)
+- Android UserLAnd Ubuntu 22.04.4
 
 ## Instrukcja użycia
 
