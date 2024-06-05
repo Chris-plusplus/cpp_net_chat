@@ -10,6 +10,7 @@ class Archimedes(ConanFile):
         self.requires("spdlog/1.12.0")
 
     def configure(self):
-        self.options["spdlog/1.12.0"].use_std_fmt = True
+        if is_msvc(self, True):
+            self.options["spdlog/1.12.0"].use_std_fmt = True
 
     generators = "CMakeDeps", "CMakeToolchain"
