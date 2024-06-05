@@ -924,11 +924,12 @@ void chat::Client::recvLoop(
 ) {
 	auto&& self = *_this;
 	char buf[256]{};
-	while (not stopToken.stop_requested() and self._socket.connected()) {
+	while (not stopToken.stop_requested()) {
 		try {
-			auto recvFuture = self._socket.recv(buf, sizeof(buf) - 1);
+			int recvLen;
+			auto recvFuture = self._socket.recv(buf, sizeof(buf) - 1, recvLen);
 			if (recvFuture.get()) {
-				{
+				if (recvLen != 0) {
 					auto lock = std::scoped_lock(*linesMutex);
 					lines->push_back(buf);
 					if (*topLine + maxY - 3 == lines->size() - 1) {
