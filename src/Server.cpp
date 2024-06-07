@@ -194,13 +194,15 @@ void chat::Server::start() {
 		throw std::runtime_error("server is not configured");
 	}
 
+	_listenSocket.reuse(true);
+
 	if (not _listenSocket.bind(_port)) {
-		arch::Logger::critical("Could not bind listening socket at port {}", _port);
+		arch::Logger::critical("Could not bind listening socket at port {}, {}", _port, netErrno());
 		return;
 	}
 	arch::Logger::info("Bound listening socket on port {}", _port);
 	if (not _listenSocket.listen().get()) {
-		arch::Logger::critical("Could not set socket to listening mode");
+		arch::Logger::critical("Could not set socket to listening mode, {}", netErrno());
 		return;
 	}
 	arch::Logger::info("Put socket into listening mode at port {}", this->_port);

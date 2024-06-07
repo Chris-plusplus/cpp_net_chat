@@ -19,13 +19,23 @@ int main() {
 	refresh();
 	endwin();
 
-	if (doStart) {
-		server.start();
+	try {
+		if (doStart) {
+			server.start();
 
-		std::string cmd;
-		do {
-			std::cin >> cmd;
-		} while (cmd != "quit");
-		arch::Logger::info("Quitting");
+			std::string cmd;
+			do {
+				std::cin >> cmd;
+			} while (cmd != "quit");
+			arch::Logger::info("Quitting");
+		}
+	} catch (arch::net::NetException& e) {
+		arch::Logger::info(
+			"{}, errno: {}, at {}:{}",
+			e.what(),
+			netErrno(),
+			e.location().file_name(),
+			e.location().line()
+		);
 	}
 }
